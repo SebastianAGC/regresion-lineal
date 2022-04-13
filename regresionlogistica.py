@@ -70,7 +70,7 @@ def gradient_descent(iterations, data, weights, alpha, threshold):
     decision = []
     for i in range(iterations):
         decision = []
-        # print("Number of iteration: ", i)
+        print("Iteration #", i)
         net = weights[0] + weights[1] * data["fixed acidity"] + weights[2] * data["volatile acidity"] \
               + weights[3] * data["citric acid"] + weights[4] * data["residual sugar"] \
               + weights[5] * data["chlorides"] + weights[6] * data["free sulfur dioxide"] \
@@ -128,8 +128,8 @@ def gradient_descent(iterations, data, weights, alpha, threshold):
 # Inputs
 print("Reading inputs...")
 input_data = pd.read_csv("winequality-red-training.csv")  # CHANGE PATH HERE
-input_iterations = 10000
-input_alpha = 0.2
+input_iterations = 100000
+input_alpha = 0.1
 input_threshold = 0.5
 input_weights = numpy.zeros(input_data.shape[1])
 
