@@ -61,16 +61,20 @@ def calculate_confusion_matrix(calculated_values, real_values):
         elif calc == 0 and real == 1:
             fn = fn + 1
 
-    return tp, tn, fp, fn
+    calc_accuracy = (tp + tn) / (tp + tn + fp + fn)
+    calc_precision = tp / (tp + fp)
+    calc_recall = tp / (tp + fn)
+
+    return tp, tn, fp, fn, calc_accuracy, calc_precision, calc_recall
 
 
-def gradient_descent(iterations, data, weights, alpha, threshold):
+def gradient_descent(iterations, data, weights, alpha, threshold, fold):
     y = data["quality"]
     iterations_loss = []
     decision = []
     for i in range(iterations):
         decision = []
-        print("Iteration #", i)
+        print("Fold # ", fold + 1, "Iteration #", i + 1)
         net = weights[0] + weights[1] * data["fixed acidity"] + weights[2] * data["volatile acidity"] \
               + weights[3] * data["citric acid"] + weights[4] * data["residual sugar"] \
               + weights[5] * data["chlorides"] + weights[6] * data["free sulfur dioxide"] \
@@ -116,7 +120,57 @@ def gradient_descent(iterations, data, weights, alpha, threshold):
         iterations_loss.append(iteration_loss)
         # print("Loss: ", iteration_loss)
 
-    return decision, y, iterations_loss
+    return decision, y, iterations_loss, weights
+
+
+def evaluate(data, weights, threshold):
+    y = data["quality"]
+    decision = []
+    net = weights[0] + weights[1] * data["fixed acidity"] + weights[2] * data["volatile acidity"] \
+          + weights[3] * data["citric acid"] + weights[4] * data["residual sugar"] \
+          + weights[5] * data["chlorides"] + weights[6] * data["free sulfur dioxide"] \
+          + weights[7] * data["total sulfur dioxide"] + weights[8] * data["density"] \
+          + weights[9] * data["pH"] + weights[10] * data["sulphates"] \
+          + weights[11] * data["alcohol"]
+    y_hat = (1 / (1 + numpy.exp(-net.array)))
+
+    for j in range(len(y_hat)):
+        if y_hat[j] >= threshold:
+            decision.append(1)
+        else:
+            decision.append(0)
+
+    return decision, y
+
+
+def kfold(data, folds, iterations, weights, alpha, threshold):
+    splits = numpy.array_split(data, folds)
+    kfold_weights = []
+    kfold_a = []  # Kfold accuracy
+    kfold_p = []  # Kfold precision
+    kfold_r = []  # Kfold recall
+    for i in range(len(splits)):
+        split_training = []
+        for j in range(len(splits)):
+            if j != i:
+                split_training.append(splits[j])
+        split_test = splits[i]
+        split_decision, split_y, split_iterations_loss, split_weights = gradient_descent(iterations, split_training,
+                                                                                         weights, alpha,
+                                                                                         threshold, i)
+        kfold_weights.append(split_weights)
+        split_d, split_y = evaluate(split_test, split_weights, threshold)
+        split_tp, split_tn, split_fp, split_fn, split_a, split_p, split_r = calculate_confusion_matrix(
+            split_d, split_y)
+        kfold_a.append(split_a)
+        kfold_p.append(split_p)
+        kfold_r.append(split_r)
+
+    kfold_avg_a = sum(kfold_a)/folds
+    kfold_avg_p = sum(kfold_p) / folds
+    kfold_avg_r = sum(kfold_r) / folds
+    kfold_weights = sum(kfold_weights)/folds
+    return kfold_avg_a, kfold_avg_p, kfold_avg_r, kfold_weights
 
 
 # -------------------------------------------------------------------------------------#
@@ -127,29 +181,54 @@ def gradient_descent(iterations, data, weights, alpha, threshold):
 
 # Inputs
 print("Reading inputs...")
-input_data = pd.read_csv("winequality-red-training.csv")  # CHANGE PATH HERE
-input_iterations = 100000
+input_training_data = pd.read_csv("winequality-red-training.csv")  # CHANGE PATH HERE
+# input_test_data = pd.read_csv("winequality-red-test.csv")  # CHANGE PATH HERE
+input_iterations = 10000
 input_alpha = 0.1
 input_threshold = 0.5
-input_weights = numpy.zeros(input_data.shape[1])
+input_weights = numpy.zeros(input_training_data.shape[1])
+input_folds = 10
 
 # Normalize data
 print("Normalizing data...")
-input_data = normalize_data(input_data)
+input_data = normalize_data(input_training_data)
+
+# Splitting the data into training and test sets (70/30)
+input_data = input_data.sample(frac=1)
+input_data_training = input_data.sample(frac=0.7)
+input_data_test = input_data.drop(input_data_training.index)
+
+# Executing k-fold
+print("Calculating kfolds...")
+kfold_res_a, kfold_res_p, kfold_res_r, kfold_res_weights = kfold(input_data_training, input_folds, input_iterations,
+                                                             input_weights, input_alpha, input_threshold)
 
 # Execute gradient descent
-print("Executing gradient decent...")
-decision, y, iterations_loss = gradient_descent(input_iterations, input_data, input_weights, input_alpha,
-                                                input_threshold)
+# print("Executing gradient decent...")
+# training_decision, training_y, iterations_loss, weights = gradient_descent(input_iterations, input_data_70, kfold_weights, input_alpha, input_threshold)
+
+# Evaluate model
+print("Evaluating test set...")
+decision, y = evaluate(input_data_test, kfold_res_weights, input_threshold)
 
 # Calculating confusion matrix
-true_positives, true_negatives, false_positives, false_negatives = calculate_confusion_matrix(decision, y)
-accuracy = (true_positives + true_negatives) / (true_positives + true_negatives + false_positives + false_negatives)
-precision = true_positives / (true_positives + false_positives)
-recall = true_positives / (true_positives + false_negatives)
-average_loss = sum(iterations_loss) / input_iterations
+print("Calculating confusion matrix...")
+true_positives, true_negatives, false_positives, false_negatives, accuracy, precision, recall = calculate_confusion_matrix(
+    decision, y)
 
-print("\n----------------------------MATRIZ DE CONFUSION----------------------------")
+# average_loss = sum(iterations_loss) / input_iterations
+
+print("\n----------------------------------INPUTS-----------------------------------")
+print("Iteraciones: ", input_iterations)
+print("Alpha: ", input_alpha)
+print("Threshold: ", input_threshold)
+print("Folds: ", input_folds)
+print("\n----------------------MATRIZ DE CONFUSION DEL MODELO-----------------------")
+print("Accuracy: ", kfold_res_a)
+print("Precision: ", kfold_res_p)
+print("Recall: ", kfold_res_r)
+print("\n----------------------MATRIZ DE CONFUSION EVALUACION-----------------------")
+print("Pesos: ", kfold_res_weights)
 print("Verdaderos Positivos: ", true_positives)
 print("Verdaderos Negativos: ", true_negatives)
 print("Falsos Positivos: ", false_positives)
@@ -157,11 +236,11 @@ print("Falsos Negativos: ", false_negatives)
 print("Accuracy: ", accuracy)
 print("Precision: ", precision)
 print("Recall: ", recall)
-print("Average loss: ", average_loss)
+# print("Average loss: ", average_loss)
 
 # Plotting loss
-plt.plot(range(1, input_iterations + 1), iterations_loss)
-plt.xlabel('Number of Iterations')
-plt.ylabel('Loss')
-plt.title('Loss per iterations')
-plt.show()
+# plt.plot(range(1, input_iterations + 1), iterations_loss)
+# plt.xlabel('Number of Iterations')
+# plt.ylabel('Loss')
+# plt.title('Loss per iterations')
+# plt.show()
