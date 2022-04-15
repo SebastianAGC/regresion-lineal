@@ -1,0 +1,39 @@
+SEBASTIAN GALINDO 15452
+TAREA REGRESION LOGISTICA
+
+INSTRUCCIONES
+Para utilizar el codigo porfavor cambiar los paths hacia los archivos de training
+y de test en las lineas 184 y 185 del archivo regresionlogistica.py. Si se desea
+cambiar cualquier otro input como la cantidad de iteraciones, alpha, threshold o
+numero de folds cambiarlo en las lineas de la 186 a la 190 del mismo archivo.
+
+
+MEJORES RESULTADOS OBTENIDOS
+
+----------------------------------INPUTS-----------------------------------
+Iteraciones:  10000
+Alpha:  0.1
+Threshold:  0.5
+Folds:  10
+
+----------------------MATRIZ DE CONFUSION DEL MODELO-----------------------
+Accuracy:  0.7452727625703746
+Precision:  0.7664109854728316
+Recall:  0.7535198368489312
+
+----------------------MATRIZ DE CONFUSION EVALUACION-----------------------
+Pesos:  [-3.48683178  1.39138197 -4.60977204 -0.8383878   0.30177268 -1.97724425
+  1.59973878 -4.98336994 -3.70460417 -3.58392086  5.23239928 14.30501857]
+Verdaderos Positivos:  137
+Verdaderos Negativos:  180
+Falsos Positivos:  28
+Falsos Negativos:  91
+Accuracy:  0.7270642201834863
+Precision:  0.8303030303030303
+Recall:  0.6008771929824561
+
+
+INTERPRETACION
+Me gustaron estos pesos para evaluar el modelo porque segun el contexto del problema
+prefiero no recomendar todos los vinos buenos posibles pero si que los vinos que recomiende
+en efecto si sean buenos. Por ello la prioridad del precision sobre el recall
